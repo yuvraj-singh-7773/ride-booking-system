@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -74,7 +75,7 @@ public class BookingServiceImpl implements BookingService {
             driver = driverRepository.findById(request.getDriverId())
                     .orElseThrow(() -> new IllegalArgumentException("Driver not found with id: " + request.getDriverId()));
             
-            if (!driver.getIsAvailable()) {
+            if (!Boolean.TRUE.equals(driver.getIsAvailable())) {
                 throw new IllegalArgumentException("Driver with id " + request.getDriverId() + " is not available");
             }
         }
@@ -105,19 +106,23 @@ public class BookingServiceImpl implements BookingService {
                     .orElseThrow(() -> new IllegalArgumentException("Driver not found with id: " + request.getDriverId()));
         }
         
-        // Handle driver availability when updating
+        // Handle driver availability when updating by comparing driver IDs
         Driver previousDriver = booking.getDriver();
-        if (previousDriver != null && !previousDriver.equals(driver)) {
-            previousDriver.setIsAvailable(true);
-            driverRepository.save(previousDriver);
-        }
-        
-        if (driver != null && !driver.equals(previousDriver)) {
-            if (!driver.getIsAvailable()) {
-                throw new IllegalArgumentException("Driver with id " + request.getDriverId() + " is not available");
+        Long previousDriverId = previousDriver != null ? previousDriver.getId() : null;
+        Long newDriverId = driver != null ? driver.getId() : null;
+
+        if (!Objects.equals(previousDriverId, newDriverId)) {
+            if (previousDriver != null) {
+                previousDriver.setIsAvailable(true);
+                driverRepository.save(previousDriver);
             }
-            driver.setIsAvailable(false);
-            driverRepository.save(driver);
+            if (driver != null) {
+                if (!Boolean.TRUE.equals(driver.getIsAvailable())) {
+                    throw new IllegalArgumentException("Driver with id " + request.getDriverId() + " is not available");
+                }
+                driver.setIsAvailable(false);
+                driverRepository.save(driver);
+            }
         }
         
         bookingMapper.updateEntity(booking, request, passenger, driver);
@@ -130,12 +135,22 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found with id: " + id));
         
-        booking.setStatus(status);
-        
-        // Handle status-specific logic
-        if (status == Booking.BookingStatus.IN_PROGRESS && booking.getActualPickupTime() == null) {
-            booking.setActualPickupTime(LocalDateTime.now());
+        if (status == null) {
+            throw new IllegalArgumentException("Booking status cannot be null");
+        }
+
+        // Handle status-specific logic and validate status transitions
+        if (status == Booking.BookingStatus.IN_PROGRESS) {
+            if (booking.getDriver() == null) {
+                throw new IllegalArgumentException("Cannot start ride without an assigned driver");
+            }
+            if (booking.getActualPickupTime() == null) {
+                booking.setActualPickupTime(LocalDateTime.now());
+            }
         } else if (status == Booking.BookingStatus.COMPLETED) {
+            if (booking.getStatus() == Booking.BookingStatus.CANCELLED) {
+                throw new IllegalArgumentException("Cannot complete a cancelled booking");
+            }
             booking.setCompletedAt(LocalDateTime.now());
             // Release driver
             if (booking.getDriver() != null) {
@@ -144,6 +159,9 @@ public class BookingServiceImpl implements BookingService {
                 driverRepository.save(driver);
             }
         } else if (status == Booking.BookingStatus.CANCELLED) {
+            if (booking.getStatus() == Booking.BookingStatus.COMPLETED) {
+                throw new IllegalArgumentException("Cannot cancel an already completed booking");
+            }
             // Release driver
             if (booking.getDriver() != null) {
                 Driver driver = booking.getDriver();
@@ -152,6 +170,7 @@ public class BookingServiceImpl implements BookingService {
             }
         }
         
+        booking.setStatus(status);
         Booking updatedBooking = bookingRepository.save(booking);
         return bookingMapper.toResponse(updatedBooking);
     }
@@ -161,8 +180,10 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Booking not found with id: " + id));
         
-        // Release driver if assigned
-        if (booking.getDriver() != null) {
+        // Release driver only if the booking is currently active (not already completed or cancelled)
+        if (booking.getDriver() != null && 
+                booking.getStatus() != Booking.BookingStatus.COMPLETED && 
+                booking.getStatus() != Booking.BookingStatus.CANCELLED) {
             Driver driver = booking.getDriver();
             driver.setIsAvailable(true);
             driverRepository.save(driver);
@@ -171,4 +192,3 @@ public class BookingServiceImpl implements BookingService {
         bookingRepository.deleteById(id);
     }
 }
-

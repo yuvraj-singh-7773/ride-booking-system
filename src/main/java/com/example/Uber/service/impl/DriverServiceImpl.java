@@ -47,8 +47,7 @@ public class DriverServiceImpl implements DriverService {
     @Override
     @Transactional(readOnly = true)
     public List<DriverResponse> findAvailableDrivers() {
-        return driverRepository.findAll().stream()
-                .filter(Driver::getIsAvailable)
+        return driverRepository.findByIsAvailableTrue().stream()
                 .map(driverMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -73,13 +72,13 @@ public class DriverServiceImpl implements DriverService {
                 .orElseThrow(() -> new IllegalArgumentException("Driver not found with id: " + id));
         
         // Check if email is being changed and if new email already exists
-        if (!driver.getEmail().equals(request.getEmail()) && 
+        if (!driver.getEmail().equalsIgnoreCase(request.getEmail()) && 
             driverRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Driver with email " + request.getEmail() + " already exists");
         }
         
         // Check if license number is being changed and if new license already exists
-        if (!driver.getLicenseNumber().equals(request.getLicenseNumber()) && 
+        if (!driver.getLicenseNumber().equalsIgnoreCase(request.getLicenseNumber()) && 
             driverRepository.existsByLicenseNumber(request.getLicenseNumber())) {
             throw new IllegalArgumentException("Driver with license number " + request.getLicenseNumber() + " already exists");
         }
@@ -97,4 +96,3 @@ public class DriverServiceImpl implements DriverService {
         driverRepository.deleteById(id);
     }
 }
-

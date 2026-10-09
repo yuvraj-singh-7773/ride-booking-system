@@ -2,7 +2,6 @@ package com.example.Uber.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -31,8 +30,6 @@ public class DriverRequest {
     
     private String vehiclePlateNumber;
     
-    @NotNull
     @Builder.Default
     private Boolean isAvailable = true;
 }
-

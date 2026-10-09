@@ -61,7 +61,7 @@ public class PassengerServiceImpl implements PassengerService {
                 .orElseThrow(() -> new IllegalArgumentException("Passenger not found with id: " + id));
         
         // Check if email is being changed and if new email already exists
-        if (!passenger.getEmail().equals(request.getEmail()) && 
+        if (!passenger.getEmail().equalsIgnoreCase(request.getEmail()) && 
             passengerRepository.existsByEmail(request.getEmail())) {
             throw new IllegalArgumentException("Passenger with email " + request.getEmail() + " already exists");
         }
@@ -79,4 +79,3 @@ public class PassengerServiceImpl implements PassengerService {
         passengerRepository.deleteById(id);
     }
 }
-

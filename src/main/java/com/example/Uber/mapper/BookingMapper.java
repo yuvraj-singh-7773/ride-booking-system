@@ -54,7 +54,8 @@ public class BookingMapper {
         // Update status based on driver assignment
         if (driver != null && booking.getStatus() == Booking.BookingStatus.PENDING) {
             booking.setStatus(Booking.BookingStatus.CONFIRMED);
+        } else if (driver == null && booking.getStatus() == Booking.BookingStatus.CONFIRMED) {
+            booking.setStatus(Booking.BookingStatus.PENDING);
         }
     }
 }
-

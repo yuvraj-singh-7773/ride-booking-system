@@ -16,7 +16,7 @@ public class DriverMapper {
                 .licenseNumber(request.getLicenseNumber())
                 .vehicleModel(request.getVehicleModel())
                 .vehiclePlateNumber(request.getVehiclePlateNumber())
-                .isAvailable(request.getIsAvailable())
+                .isAvailable(request.getIsAvailable() != null ? request.getIsAvailable() : true)
                 .build();
     }
     
@@ -42,7 +42,8 @@ public class DriverMapper {
         driver.setLicenseNumber(request.getLicenseNumber());
         driver.setVehicleModel(request.getVehicleModel());
         driver.setVehiclePlateNumber(request.getVehiclePlateNumber());
-        driver.setIsAvailable(request.getIsAvailable());
+        if (request.getIsAvailable() != null) {
+            driver.setIsAvailable(request.getIsAvailable());
+        }
     }
 }
-
